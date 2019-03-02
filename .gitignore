@@ -3,3 +3,4 @@ backup/*
 
 # Configuration files (domain, etc.)
 config/*
+!config/system-example.yml

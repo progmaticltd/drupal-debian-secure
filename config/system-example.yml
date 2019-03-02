@@ -1,0 +1,17 @@
+---
+
+###############################################################################
+# Domain and hostname information
+network:
+  domain: sample.do
+  hostname: drupal.sample.do
+
+##############################################################################
+# Extra security values
+security:
+  auto_update: true
+  app_armor: true
+
+drupal:
+  timezone: Europe/London
+  password: $S$DgxN/N1uuXIF8CF.I25XYZJdkYS09U0mNfskMHc/zYGHPmR64odN
