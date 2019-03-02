@@ -1,0 +1,99 @@
+---
+
+- name: Install the Debian drupal package
+  vars:
+    pkgs:
+      - drupal7
+      - libapache2-mod-security2
+      - libapache2-mod-rpaf
+      - nginx
+      - apache2
+      - postgresql
+      - python-psycopg2
+      - php7.0-pgsql
+      - php7.0-cli
+      - php7.0-mcrypt
+      - php7.0-intl
+      - php7.0-curl
+      - php7.0-gd
+      - php7.0-soap
+      - php7.0-xml
+      - php7.0-zip
+      - php-mbstring
+      - php-mcrypt
+      - php-gmp
+      - php-uploadprogress
+  apt:
+    name: '{{ pkgs }}'
+    state: latest
+
+- name: Initialise the database
+  include_tasks: db.yml
+
+- name: Deploy apache frontend configuration
+  template:
+    src: '{{ file }}'
+    dest: '/etc/drupal/7/sites/default/{{ file }}'
+  with_items:
+    - settings.php
+    - dbconfig.php
+    - baseurl.php
+  loop_control:
+    loop_var: file
+
+- name: Configure apache server to listen on a specific port
+  notify: Restart Apache
+  replace:
+    path: /etc/apache2/ports.conf
+    regexp: '^Listen 80'
+    replace: 'Listen 81'
+
+- name: Disable apache default site
+  notify: Restart Apache
+  file:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    state: absent
+
+- name: Deploy apache frontend configuration
+  notify: Restart Apache
+  template:
+    src: apache2-front.conf
+    dest: '/etc/apache2/sites-available/www.{{ network.domain }}.conf'
+
+- name: Activate apache frontend configuration
+  notify: Restart Apache
+  file:
+    src: '/etc/apache2/sites-available/www.{{ network.domain }}.conf'
+    dest: '/etc/apache2/sites-enabled/www.{{ network.domain }}.conf'
+    state: link
+
+- name: Disable apache ssl module
+  notify: Restart Apache
+  apache2_module:
+    state: absent
+    name: ssl
+
+- name: Activate apache rewrite and security modules
+  notify: Restart Apache
+  apache2_module:
+    state: present
+    name: '{{ module }}'
+  with_items:
+    - security2
+    - rewrite
+    - rpaf
+  loop_control:
+    loop_var: module
+
+- name: Deploy nginx frontend configuration
+  notify: Restart Nginx
+  template:
+    src: nginx-front.conf
+    dest: '/etc/nginx/sites-available/www.{{ network.domain }}.conf'
+
+- name: Activate nginx frontend configuration
+  notify: Restart Nginx
+  file:
+    src: '/etc/nginx/sites-available/www.{{ network.domain }}.conf'
+    dest: '/etc/nginx/sites-enabled/www.{{ network.domain }}.conf'
+    state: link

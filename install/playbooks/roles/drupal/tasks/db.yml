@@ -1,0 +1,76 @@
+---
+
+# Database configuration ======================================================
+
+- name: Initialise the drupal database password parameters
+  set_fact:
+    drupal_password_params: "{{ playbook_dir }}/../../backup/{{ network.domain }}/postgresql/drupal.pwd length=16"
+
+- name: Create the drupal database account password
+  set_fact:
+    drupal_db_password: '{{ lookup("password", drupal_password_params) }}'
+
+- name: Create the database user
+  tags: postgres
+  become: true
+  become_user: postgres
+  postgresql_user:
+    name: drupal
+    password: '{{ drupal_db_password }}'
+    role_attr_flags: LOGIN
+
+- name: Create the database
+  register: drupaldb
+  tags: postgres
+  become: true
+  become_user: postgres
+  postgresql_db:
+    encoding: utf8
+    name: drupal
+    owner: drupal
+
+# - name: Copy the database initialisation scripts
+#   tags: postgres
+#   template:
+#     src: '{{ dbinit }}.sql'
+#     dest: '/tmp/{{ dbinit }}.sql'
+#   with_items:
+#     - drupal-data
+#     - drupal-schema
+#   loop_control:
+#     loop_var: dbinit
+
+# - name: Initialise the database
+#   when: drupaldb.changed
+#   tags: postgres
+#   register: db_init
+#   become: true
+#   become_user: postgres
+#   shell: >-
+#     cat /tmp/{{ dbinit }}.sql
+#     | psql -a -d drupal
+#     -o /var/log/dbinstall-{{ dbinit }}.log
+#   args:
+#     creates: '/var/log/dbinstall-{{ dbinit }}.log'
+#   with_items:
+#     - drupal-data
+#     - drupal-schema
+#   loop_control:
+#     loop_var: dbinit
+
+# - name: Keep the DB logs
+#   when: db_init.changed
+#   copy:
+#     src: /tmp/drupal-db-install.log
+#     dest: /var/log/drupal/db-install.log
+#     remote_src: true
+
+- name: Initialise grants
+  tags: postgres
+  become: true
+  become_user: postgres
+  postgresql_privs:
+    db: drupal
+    objs: ALL_IN_SCHEMA
+    privs: ALL
+    role: drupal

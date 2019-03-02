@@ -1,0 +1,30 @@
+---
+
+# Create the certificate for the web site if not exists
+- hosts: homebox
+  vars:
+    defaults_loaded: true
+    redirect: true
+    certificate:
+      type: www
+  vars_files:
+    - '{{ playbook_dir }}/../../config/system.yml'
+  roles:
+    - role: certificates
+      tags: certificates
+
+# Install mod-security
+- hosts: homebox
+  vars_files:
+    - '{{ playbook_dir }}/../../config/system.yml'
+  roles:
+    - role: mod-security
+      tags: mod-security
+
+# Install Drupal
+- hosts: homebox
+  vars_files:
+    - '{{ playbook_dir }}/../../config/system.yml'
+  roles:
+    - role: drupal
+      tags: drupal

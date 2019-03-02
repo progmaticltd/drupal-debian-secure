@@ -1,0 +1,11 @@
+---
+
+- name: Restart Apache
+  service:
+    name: apache2
+    state: restarted
+
+- name: Restart AppArmor
+  service:
+    name: apparmor
+    state: restarted

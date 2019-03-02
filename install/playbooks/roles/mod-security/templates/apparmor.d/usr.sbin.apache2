@@ -1,0 +1,82 @@
+# Last Modified: Mon Feb 11 22:35:54 2019
+#include <tunables/global>
+
+/usr/sbin/apache2 {
+
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+  #include <abstractions/php>
+
+  # capabilities
+  capability dac_override,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_tty_config,
+
+  # Configuration
+  /etc/apache2/** r,
+
+  # Apache binary files and modules
+  /usr/sbin/apache2 mr,
+  /lib/x86_64-linux-gnu/ld-*.so mr,
+  /usr/lib/apache2/modules/mod_*.so mr,
+
+  # Read Drupal configuration
+  /etc/drupal/7/** r,
+
+  # Other configuration
+  /etc/mime.types r,
+
+  # mod-security
+  /etc/modsecurity/ r,
+  /etc/modsecurity/** r,
+  /usr/share/modsecurity-crs/** r,
+
+  # Read Drupal files - core modules
+  /usr/share/drupal7/** r,
+
+  # Read Drupal files - community modules
+  /var/lib/drupal7/modules/** r,
+  /var/lib/drupal7/modules/ r,
+  /var/lib/drupal7/files/** r,
+  /var/lib/drupal7/files/.htaccess r,
+
+  # Access nscd cache
+  /var/cache/nscd/* r,
+
+  # Log files
+  /var/log/apache2/*.log w,
+
+  # PID files
+  /run/apache2/apache2.pid rwkl,
+
+  # Fonts from awesome module
+  /usr/share/fonts-font-awesome/** r,
+
+  # TODO: Check if this is needed
+  /tmp/.htaccess rwk,
+
+  # Compressed CSS & JS files
+  /var/lib/drupal7/files/css/ rwk,
+  /var/lib/drupal7/files/css/* rwk,
+  /var/lib/drupal7/files/js/ rwk,
+  /var/lib/drupal7/files/js/* rwk,
+
+  # ctools cache
+  /var/lib/drupal7/files/ctools/ rwk,
+  /var/lib/drupal7/files/ctools/** rwk,
+  /var/lib/drupal7/files/xmlsitemap/ rwk,
+  /var/lib/drupal7/files/xmlsitemap/** rwkl,
+
+  # temporary folder
+  /tmp/* rwk,
+
+  # This need to be tuned / checked
+  # ^DEFAULT_URI flags=(complain) {
+  # }
+  # ^HANDLING_UNTRUSTED_INPUT flags=(complain) {
+  # }
+}
