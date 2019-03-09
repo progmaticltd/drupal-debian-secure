@@ -22,10 +22,8 @@
 
 - name: Install common packages
   tags: apt
-  apt:
-    name: "{{ pkg }}"
-    state: present
-  with_items:
+  vars:
+    common_pkgs:
     - ufw
     - rsync
     - makepasswd
@@ -34,8 +32,10 @@
     - acl
     - certbot
     - sudo
-  loop_control:
-    loop_var: pkg
+    - screen
+  apt:
+    name: "{{ common_pkgs }}"
+    state: present
 
 - name: Make sure letsencrypt directory exists
   file:
@@ -125,25 +125,20 @@
 - name: Install ufw / fail2ban and automatic security updates
   tags: apt, security
   apt:
-    name: "{{ pkg }}"
-    state: present
-  with_items:
-    - '{{ defaults.packages }}'
-  loop_control:
-    loop_var: pkg
+    name: '{{ defaults.packages }}'
+    state: latest
 
 - name: Install AppArmor packages
   when: security.app_armor
   tags: security
+  vars:
+    aa_pkgs:
+      - apparmor
+      - apparmor-profiles
+      - apparmor-utils
   apt:
-    name: '{{ pkg }}'
+    name: '{{ aa_pkgs }}'
     state: latest
-  with_items:
-    - apparmor
-    - apparmor-profiles
-    - apparmor-utils
-  loop_control:
-    loop_var: pkg
 
 - name: Configure grub to add apparmor by default on boot
   register: grub_config
