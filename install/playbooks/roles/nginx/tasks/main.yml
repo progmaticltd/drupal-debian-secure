@@ -1,0 +1,86 @@
+---
+
+- name: Install nginx
+  apt:
+    name: "{{ pkg }}"
+    state: present
+  with_items:
+    - nginx
+  loop_control:
+    loop_var: pkg
+
+################################################################################
+# At this point, the certificates should have been created already #############
+# in order to have SSL and TLS encryption activated.                           #
+- name: Allow the web server to access certificates
+  tags: ssl
+  notify: Restart nginx
+  acl:
+    path: '{{ path }}'
+    entity: www-data
+    etype: user
+    permissions: rx
+    state: present
+  with_items:
+    - /etc/letsencrypt
+    - /etc/letsencrypt/archive
+    - /etc/letsencrypt/live
+  loop_control:
+    loop_var: path
+
+#                                                                              #
+# End of TLS / SSL Configuration ###############################################
+
+- name: Disable nginx default site
+  notify: Restart nginx
+  file:
+    path: '/etc/nginx/sites-enabled/default'
+    state: absent
+    force: yes
+
+- name: Configure the firewall for default access
+  tags: ufw, security
+  ufw:
+    rule: allow
+    proto: tcp
+    src: any
+    port: '{{ rule.port }}'
+    comment: '{{ rule.comment }}'
+  with_items:
+    - comment: Allow http/https access
+      port: 80,443
+  loop_control:
+    loop_var: rule
+
+
+# Security improvements =======================================================
+
+- name: Generate a strong Diffie Hellman file
+  tags: security
+  openssl_dhparam:
+    path: /etc/nginx/dhparams.pem
+    size: 2048
+    mode: 0600
+    owner: root
+    group: root
+
+- name: Install nginx secure configuration
+  template:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+
+# AppArmor configuration ======================================================
+
+- name: Install nginx AppArmor profile
+  when: security.app_armor
+  tags: security, apparmor
+  template:
+    src: 'apparmor.d/usr.sbin.nginx'
+    dest: '/etc/apparmor.d/usr.sbin.nginx'
+    force: no
+
+- name: Activate AppArmor profiles
+  when: security.app_armor
+  tags: roundcube, security, apparmor
+  command: 'aa-enforce usr.sbin.nginx'
+  notify: Restart AppArmor service

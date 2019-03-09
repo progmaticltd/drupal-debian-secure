@@ -1,3 +1,3 @@
 <?php
 
-$base_url = 'https://www.{{ network.domain }}';
+$base_url = 'https://{{ drupal.subdomain }}.{{ network.domain }}';

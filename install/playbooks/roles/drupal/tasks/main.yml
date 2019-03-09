@@ -1,34 +1,30 @@
 ---
 
 - name: Install the Debian drupal package
-  vars:
-    pkgs:
-      - drupal7
-      - libapache2-mod-security2
-      - libapache2-mod-rpaf
-      - nginx
-      - apache2
-      - postgresql
-      - python-psycopg2
-      - php7.0-pgsql
-      - php7.0-cli
-      - php7.0-mcrypt
-      - php7.0-intl
-      - php7.0-curl
-      - php7.0-gd
-      - php7.0-soap
-      - php7.0-xml
-      - php7.0-zip
-      - php-mbstring
-      - php-mcrypt
-      - php-gmp
-      - php-uploadprogress
   apt:
-    name: '{{ pkgs }}'
+    name: '{{ drupal_pkgs }}'
     state: latest
 
 - name: Initialise the database
   include_tasks: db.yml
+
+- name: Create the directory for Drush
+  file:
+    path: /usr/local/lib/drush7
+    state: directory
+
+- name: Install Drush using composer
+  shell: >-
+    composer require drush/drush:7.x
+  args:
+    chdir: /usr/local/lib/drush7
+    creates: /usr/local/lib/drush7/composer.json
+
+- name: Create the symbolic link
+  file:
+    src: /usr/local/lib/drush7/vendor/drush/drush/drush
+    dest: /usr/local/sbin/drush
+    state: link
 
 - name: Deploy apache frontend configuration
   template:
@@ -40,6 +36,37 @@
     - baseurl.php
   loop_control:
     loop_var: file
+
+- name: Initialise the drupal admin password parameters
+  set_fact:
+    admin_password_path: "{{ playbook_dir }}/../../backup/{{ network.domain }}/drupal/admin.pwd"
+    admin_password_params: "chars=ascii_letters,digits length=16"
+
+- name: Create the drupal admin account password
+  set_fact:
+    admin_password: '{{ lookup("password", admin_password_path + " " + admin_password_params) }}'
+
+- name: Install Drupal automatically with Drush
+  shell: >-
+    echo y | drush site-install standard
+    --locale=en-GB
+    --account-name=admin
+    --account-pass={{ admin_password }}
+    --account-mail="admin@{{ network.domain }}"
+    --site-mail="admin@{{ network.domain }}"
+    --site-name="Welcome to Drupal"
+    --clean-url
+    --db-url="pgsql://drupal:{{ drupal_db_password }}@localhost/drupal"
+    2>&1 >/var/log/drupal-install.log
+  args:
+    chdir: /usr/share/drupal7/
+    creates: /var/log/drupal-install.log
+
+- name: Deploy CRS rules for Drupal
+  notify: Restart Apache
+  template:
+    src: crs-rules-drupal.conf
+    dest: /etc/modsecurity/crs/rules-drupal.conf
 
 - name: Configure apache server to listen on a specific port
   notify: Restart Apache
@@ -58,13 +85,13 @@
   notify: Restart Apache
   template:
     src: apache2-front.conf
-    dest: '/etc/apache2/sites-available/www.{{ network.domain }}.conf'
+    dest: '/etc/apache2/sites-available/{{ drupal.subdomain }}.{{ network.domain }}.conf'
 
 - name: Activate apache frontend configuration
   notify: Restart Apache
   file:
-    src: '/etc/apache2/sites-available/www.{{ network.domain }}.conf'
-    dest: '/etc/apache2/sites-enabled/www.{{ network.domain }}.conf'
+    src: '/etc/apache2/sites-available/{{ drupal.subdomain }}.{{ network.domain }}.conf'
+    dest: '/etc/apache2/sites-enabled/{{ drupal.subdomain }}.{{ network.domain }}.conf'
     state: link
 
 - name: Disable apache ssl module
@@ -89,11 +116,11 @@
   notify: Restart Nginx
   template:
     src: nginx-front.conf
-    dest: '/etc/nginx/sites-available/www.{{ network.domain }}.conf'
+    dest: '/etc/nginx/sites-available/{{ drupal.subdomain }}.{{ network.domain }}.conf'
 
 - name: Activate nginx frontend configuration
   notify: Restart Nginx
   file:
-    src: '/etc/nginx/sites-available/www.{{ network.domain }}.conf'
-    dest: '/etc/nginx/sites-enabled/www.{{ network.domain }}.conf'
+    src: '/etc/nginx/sites-available/{{ drupal.subdomain }}.{{ network.domain }}.conf'
+    dest: '/etc/nginx/sites-enabled/{{ drupal.subdomain }}.{{ network.domain }}.conf'
     state: link
