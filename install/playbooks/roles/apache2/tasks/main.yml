@@ -1,0 +1,41 @@
+---
+
+- name: Install the Apache required packages
+  vars:
+    pkgs:
+      - apache2
+      - libapache2-mod-rpaf
+  apt:
+    name: '{{ pkgs }}'
+    state: latest
+
+- name: Configure apache server to listen on a specific port
+  notify: Restart Apache
+  replace:
+    path: /etc/apache2/ports.conf
+    regexp: '^Listen 80'
+    replace: 'Listen 81'
+
+- name: Disable apache default site
+  notify: Restart Apache
+  file:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    state: absent
+
+- name: Activate apache modules for Drupal
+  notify: Restart Apache
+  apache2_module:
+    state: present
+    name: '{{ module }}'
+  with_items:
+    - rewrite
+    - rpaf
+  loop_control:
+    loop_var: module
+
+- name: Disable apache ssl module
+  notify: Restart Apache
+  apache2_module:
+    state: absent
+    name: ssl
+

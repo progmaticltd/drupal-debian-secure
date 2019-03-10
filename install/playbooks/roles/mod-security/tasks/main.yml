@@ -6,6 +6,7 @@
       - unzip
       - modsecurity-crs
       - libapache2-mod-security2
+      - apache2
   apt:
     name: '{{ pkgs }}'
     state: latest
@@ -25,6 +26,12 @@
     - Restart AppArmor
   when: apache_aa_profile.changed
   shell: aa-enforce usr.sbin.apache2
+
+- name: Activate apache security module
+  notify: Restart Apache
+  apache2_module:
+    state: present
+    name: security2
 
 - name: Use the recommended settings for mod security
   copy:

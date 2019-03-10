@@ -69,19 +69,6 @@
     src: crs-rules-drupal.conf
     dest: /etc/modsecurity/crs/rules-drupal.conf
 
-- name: Configure apache server to listen on a specific port
-  notify: Restart Apache
-  replace:
-    path: /etc/apache2/ports.conf
-    regexp: '^Listen 80'
-    replace: 'Listen 81'
-
-- name: Disable apache default site
-  notify: Restart Apache
-  file:
-    path: /etc/apache2/sites-enabled/000-default.conf
-    state: absent
-
 - name: Deploy apache frontend configuration
   notify: Restart Apache
   template:
@@ -94,24 +81,6 @@
     src: '/etc/apache2/sites-available/{{ drupal.subdomain }}.{{ network.domain }}.conf'
     dest: '/etc/apache2/sites-enabled/{{ drupal.subdomain }}.{{ network.domain }}.conf'
     state: link
-
-- name: Disable apache ssl module
-  notify: Restart Apache
-  apache2_module:
-    state: absent
-    name: ssl
-
-- name: Activate apache rewrite and security modules
-  notify: Restart Apache
-  apache2_module:
-    state: present
-    name: '{{ module }}'
-  with_items:
-    - security2
-    - rewrite
-    - rpaf
-  loop_control:
-    loop_var: module
 
 - name: Deploy nginx frontend configuration
   notify: Restart Nginx
