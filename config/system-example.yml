@@ -19,6 +19,15 @@ security:
 drupal:
   subdomain: blog
   site_name: My wonderful life
+  modules:
+    uninstall:
+      - overlay
+    install:
+      - advanced_help
+      - ctools
+      - entity
+      - mimemail
+      - views
 
 ###############################################################################
 # System related

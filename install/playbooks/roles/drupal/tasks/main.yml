@@ -46,9 +46,14 @@
   set_fact:
     admin_password: '{{ lookup("password", admin_password_path + " " + admin_password_params) }}'
 
+- name: Create a directory for Drupal logs
+  file:
+    path: /var/log/drupal
+    state: directory
+
 - name: Install Drupal automatically with Drush
   shell: >-
-    echo y | drush site-install standard
+    drush site-install -y standard
     --locale=en-GB
     --account-name=admin
     --account-pass={{ admin_password }}
@@ -58,10 +63,48 @@
     --verbose
     --clean-url
     --db-url="pgsql://drupal:{{ drupal_db_password }}@localhost/drupal"
-    2>&1 >/var/log/drupal-install.log
+    | sed "s/{{ admin_password }}/*******/g"
+    >/var/log/drupal/install.log 2>&1
   args:
     chdir: /usr/share/drupal7/
-    creates: /var/log/drupal-install.log
+    creates: /var/log/drupal/install.log
+
+- name: Download the required modules
+  shell: >-
+    drush dl {{ module }}
+  args:
+    chdir: /usr/share/drupal7/
+    creates: '/usr/share/drupal7/sites/default/modules/{{ module }}'
+  with_items:
+    - '{{ drupal.modules.install | default([]) }}'
+  loop_control:
+    loop_var: module
+
+- name: Enable the required modules
+  shell: >-
+    drush en -y {{ module }}
+    >/var/log/drupal/module-{{ module }}-install.log
+    2>&1
+  args:
+    chdir: /usr/share/drupal7/
+    creates: '/var/log/drupal/module-{{ module }}-install.log'
+  with_items:
+    - '{{ drupal.modules.install | default([]) }}'
+  loop_control:
+    loop_var: module
+
+- name: Uninstall the modules in the uninstall list
+  shell: >-
+    drush dis -y {{ module }}
+    >/var/log/drupal/module-{{ module }}-uninstall.log
+    2>&1
+  args:
+    chdir: /usr/share/drupal7/
+    creates: '/var/log/drupal/module-{{ module }}-uninstall.log'
+  with_items:
+    - '{{ drupal.modules.uninstall | default([]) }}'
+  loop_control:
+    loop_var: module
 
 - name: Deploy CRS rules for Drupal
   notify: Restart Apache
