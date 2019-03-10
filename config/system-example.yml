@@ -4,7 +4,7 @@
 # Domain and hostname information
 network:
   domain: sample.do
-  hostname: drupal.sample.do
+  hostname: blog.sample.do
 
 ##############################################################################
 # Extra security values
@@ -15,10 +15,10 @@ security:
     install: true
 
 ###############################################################################
-# System related
+# Drupal settings
 drupal:
-  subdomain: sa-check
-  site_name: Welcome to Drupal
+  subdomain: blog
+  site_name: My wonderful life
 
 ###############################################################################
 # System related

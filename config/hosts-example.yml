@@ -1,0 +1,9 @@
+---
+# hosts configuration sample
+
+all:
+  hosts:
+    homebox:
+      ansible_host: 12.34.56.78
+      ansible_user: root
+      ansible_port: 22

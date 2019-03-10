@@ -6,4 +6,5 @@ backup/*
 
 # Configuration files (domain, etc.)
 config/*
+!config/defaults.yml
 !config/*-example.yml
