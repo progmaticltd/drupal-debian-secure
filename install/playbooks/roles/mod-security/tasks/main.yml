@@ -31,3 +31,11 @@
     src: /etc/modsecurity/modsecurity.conf-recommended
     dest: /etc/modsecurity/modsecurity.conf
     remote_src: true
+
+- name: Activate mod_security
+  notify: Restart Apache
+  replace:
+    path: /etc/modsecurity/modsecurity.conf
+    regexp: '^SecRuleEngine DetectionOnly'
+    replace: 'SecRuleEngine On'
+  
