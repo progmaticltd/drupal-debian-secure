@@ -1,1 +1,23 @@
 ---
+
+drupal_pkgs:
+  - drupal7
+  - libapache2-mod-security2
+  - libapache2-mod-rpaf
+  - nginx
+  - postgresql
+  - python-psycopg2
+  - php7.0-pgsql
+  - php7.0-cli
+  - php7.0-mcrypt
+  - php7.0-intl
+  - php7.0-curl
+  - php7.0-gd
+  - php7.0-soap
+  - php7.0-xml
+  - php7.0-zip
+  - php-mbstring
+  - php-mcrypt
+  - php-gmp
+  - php-uploadprogress
+  - composer

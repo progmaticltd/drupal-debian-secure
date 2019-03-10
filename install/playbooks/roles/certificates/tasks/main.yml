@@ -1,5 +1,12 @@
 ---
 
+- name: Install the required packages
+  apt:
+    name:
+      - nginx
+      - rsync
+    state: latest
+
 - name: Create a directory for certificates backup if it does not exists
   tags: cert
   delegate_to: localhost

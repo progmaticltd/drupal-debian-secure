@@ -1,0 +1,211 @@
+---
+
+
+# Install the most required packages
+- name: Update packages cache
+  tags: apt
+  apt:
+    cache_valid_time: 3600
+    update_cache: true
+
+# Install swap if not enough memory available
+- name: Install memory swap package
+  when: ansible_memtotal_mb < 2048
+  apt:
+    name: dphys-swapfile
+    state: latest
+
+- name: Upgrade the distribution
+  tags: apt
+  apt:
+    upgrade: true
+
+- name: Install common packages
+  tags: apt
+  vars:
+    common_pkgs:
+    - ufw
+    - rsync
+    - makepasswd
+    - haveged
+    - nginx
+    - acl
+    - certbot
+    - sudo
+    - screen
+  apt:
+    name: "{{ common_pkgs }}"
+    state: present
+
+- name: Make sure letsencrypt directory exists
+  file:
+    path: '{{ path }}'
+    state: directory
+    mode: 0750
+  with_items:
+    - /etc/letsencrypt/archive
+    - /etc/letsencrypt/live
+  loop_control:
+    loop_var: path
+
+# Update packages cache, and install any security update
+- name: Update packages cache and install security updates
+  register: packages_cache
+  tags: apt
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade the distribution, and install security updates if needed
+  when: packages_cache.changed
+  tags: apt
+  apt:
+    upgrade: yes
+
+# We are going to install the "unattended-upgrades" package, and to
+# configure it to install security updates automatically.
+- name: Configure the automatic security updates
+  tags: security
+  debconf:
+    name: unattended-upgrades
+    question: '{{ conf.question }}'
+    value: '{{ conf.value }}'
+    vtype: '{{ conf.type }}'
+  with_items:
+    - question: unattended-upgrades/origins_pattern
+      value: 'origin=Debian,codename=${distro_codename},label=Debian-Security'
+      type: string
+    - question: unattended-upgrades/enable_auto_updates
+      value: '{{ security.auto_update | ternary("true","false") }}'
+      type: boolean
+  loop_control:
+    loop_var: conf
+
+- name: Get the locale value on the current machine
+  tags: locale
+  delegate_to: localhost
+  set_fact:
+    locale: "{{ lookup('env','LANG') }}"
+
+# We are going to install the "unattended-upgrades" package, and to
+# configure it to install security updates automatically.
+- name: Configure locales
+  tags: locale
+  debconf:
+    name: locales
+    question: '{{ conf.question }}'
+    value: '{{ conf.value }}'
+    vtype: '{{ conf.type }}'
+  with_items:
+    - question: locales/locales_to_be_generated
+      value: '{{ locale }}'
+      type: multiselect
+    - question: locales/default_environment_locale
+      value: '{{ locale }}'
+      type: boolean
+  loop_control:
+    loop_var: conf
+
+- name: Update /etc/locales
+  tags: locale
+  replace:
+    path: /etc/locale.gen
+    regexp: '^# {{ locale | regex_replace("\.", "\\.") }}'
+    replace: '{{ locale }}'
+
+- name: Configure locales
+  tags: locale
+  shell: dpkg-reconfigure -phigh locales
+
+# Install the firewall, but do not configure any rule.
+# The other tasks will setup the rules themselves
+# We are also installing fail2ban, so the other services might use it, like postfix, dovecot and roundcube
+# The package 'unattended-upgrades' download and install security updates by default
+
+- name: Install ufw / fail2ban and automatic security updates
+  tags: apt, security
+  apt:
+    name: '{{ defaults.packages }}'
+    state: latest
+
+- name: Install AppArmor packages
+  when: security.app_armor
+  tags: security
+  vars:
+    aa_pkgs:
+      - apparmor
+      - apparmor-profiles
+      - apparmor-utils
+  apt:
+    name: '{{ aa_pkgs }}'
+    state: latest
+
+- name: Configure grub to add apparmor by default on boot
+  register: grub_config
+  when: security.app_armor
+  tags: security
+  lineinfile:
+    path: /etc/default/grub
+    backrefs: true
+    regexp: 'GRUB_CMDLINE_LINUX_DEFAULT="(?!apparmor=1 security=apparmor)(.*)"'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="apparmor=1 security=apparmor \1"'
+    state: present
+
+# AppArmor will be enabled on the next reboot
+- name: Update grub
+  when: grub_config.changed
+  command: update-grub2
+
+- name: Enable AppArmor service
+  when: security.app_armor
+  tags: security
+  service:
+    name: apparmor
+    enabled: true
+
+- name: Check if AppArmor is enabled
+  register: aa_enabled
+  when: security.app_armor
+  tags: security
+  shell: aa-enabled
+  failed_when: false
+
+- name: Reboot to activate AppArmor if not already active
+  when: security.app_armor and aa_enabled.rc == 1
+  tags: security, apparmor
+  shell: >-
+    sleep 2 &&
+    systemctl reboot --message
+    "Restarting the system to activate AppArmor"
+  async: 60
+  poll: 0
+  ignore_errors: true
+
+- name: Wait for the server to come back online
+  when: security.app_armor and aa_enabled.rc == 1
+  tags: security
+  local_action:
+    module: wait_for_connection
+    delay: 30
+    sleep: 10
+    timeout: '{{ system.reboot_timeout }}'
+
+- name: Copy sensible defaults
+  template:
+    src: '{{ rcfile }}'
+    dest: '/root/.{{ rcfile }}'
+  with_items:
+    - bashrc
+    - screenrc
+  loop_control:
+    loop_var: rcfile
+
+- name: Install the dictionnaries
+  tags: lang
+  apt:
+    name: 'aspell-{{ dict.id }}'
+    state: present
+  with_items: '{{ dictionaries }}'
+  loop_control:
+    loop_var: dict
+

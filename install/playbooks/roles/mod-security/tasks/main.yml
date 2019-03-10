@@ -4,27 +4,12 @@
   vars:
     pkgs:
       - unzip
+      - modsecurity-crs
+      - libapache2-mod-security2
+      - apache2
   apt:
     name: '{{ pkgs }}'
     state: latest
-
-- name: Download mod-security
-  get_url:
-    url: https://github.com/SpiderLabs/owasp-modsecurity-crs/archive/v3.1.0.zip
-    checksum: sha256:cd9f9d5828b15178cf67e69a6c3d6ffefb3efa7d534182e531b163449dd256a3
-    dest: /tmp/owasp-modsecurity-crs_v3.1.0.zip
-
-- name: Decompress the mod security file
-  unarchive:
-    src: /tmp/owasp-modsecurity-crs_v3.1.0.zip
-    dest: /etc/modsecurity
-    remote_src: yes
-
-- name: activate this version as the default
-  file:
-    src: /etc/modsecurity/owasp-modsecurity-crs-3.1.0/
-    dest: /etc/modsecurity/owasp-modsecurity-crs
-    state: link
 
 - name: Create AppArmor profile for Apache
   register: apache_aa_profile
@@ -42,13 +27,22 @@
   when: apache_aa_profile.changed
   shell: aa-enforce usr.sbin.apache2
 
-- name: copy the global and drupal CRS configuration files
+- name: Activate apache security module
   notify: Restart Apache
-  template:
-    src: '{{ file }}'
-    dest: '/etc/modsecurity/owasp-modsecurity-crs/{{ file }}'
-  with_items:
-    - modsecurity.conf
-    - crs-setup.conf
-  loop_control:
-    loop_var: file
+  apache2_module:
+    state: present
+    name: security2
+
+- name: Use the recommended settings for mod security
+  copy:
+    src: /etc/modsecurity/modsecurity.conf-recommended
+    dest: /etc/modsecurity/modsecurity.conf
+    remote_src: true
+
+- name: Activate mod_security
+  notify: Restart Apache
+  replace:
+    path: /etc/modsecurity/modsecurity.conf
+    regexp: '^SecRuleEngine DetectionOnly'
+    replace: 'SecRuleEngine On'
+  

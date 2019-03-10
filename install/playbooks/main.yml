@@ -1,21 +1,43 @@
 ---
 
+# Prepare the system
+- hosts: homebox
+  vars_files:
+    - '{{ playbook_dir }}/../../config/defaults.yml'
+    - '{{ playbook_dir }}/../../config/system.yml'
+  roles:
+    - role: system-prepare
+      tags: system-prepare
+
 # Create the certificate for the web site if not exists
 - hosts: homebox
   vars:
     defaults_loaded: true
     redirect: true
     certificate:
-      type: www
+      type: '{{ drupal.subdomain }}'
   vars_files:
+    - '{{ playbook_dir }}/../../config/defaults.yml'
     - '{{ playbook_dir }}/../../config/system.yml'
   roles:
+    - role: nginx
+      tags: nginx
     - role: certificates
       tags: certificates
+
+# Install apache (listen on port 81 only)
+- hosts: homebox
+  vars_files:
+    - '{{ playbook_dir }}/../../config/defaults.yml'
+    - '{{ playbook_dir }}/../../config/system.yml'
+  roles:
+    - role: apache2
+      tags: apache2
 
 # Install mod-security
 - hosts: homebox
   vars_files:
+    - '{{ playbook_dir }}/../../config/defaults.yml'
     - '{{ playbook_dir }}/../../config/system.yml'
   roles:
     - role: mod-security
@@ -24,6 +46,7 @@
 # Install Drupal
 - hosts: homebox
   vars_files:
+    - '{{ playbook_dir }}/../../config/defaults.yml'
     - '{{ playbook_dir }}/../../config/system.yml'
   roles:
     - role: drupal

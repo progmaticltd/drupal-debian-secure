@@ -56,9 +56,7 @@ $drupal_hash_salt = '';
  * It is not allowed to have a trailing slash; Drupal will add it
  * for you.
  */
-$base_url = 'https://www.{{ network.domain }}';  // NO trailing slash!
-// if (file_exists('baseurl.php'))
-//     include_once('baseurl.php');
+$base_url = 'https://{{ drupal.subdomain }}.{{ network.domain }}';  // NO trailing slash!
 
 /**
  * Cron Key (optional).
