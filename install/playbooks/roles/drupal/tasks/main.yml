@@ -54,7 +54,8 @@
     --account-pass={{ admin_password }}
     --account-mail="admin@{{ network.domain }}"
     --site-mail="admin@{{ network.domain }}"
-    --site-name="Welcome to Drupal"
+    --site-name="{{ drupal.site_name }}"
+    --verbose
     --clean-url
     --db-url="pgsql://drupal:{{ drupal_db_password }}@localhost/drupal"
     2>&1 >/var/log/drupal-install.log

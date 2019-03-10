@@ -11,7 +11,20 @@ network:
 security:
   auto_update: true
   app_armor: true
+  mod_security:
+    install: true
 
+###############################################################################
+# System related
 drupal:
-  timezone: Europe/London
-  password: $S$DgxN/N1uuXIF8CF.I25XYZJdkYS09U0mNfskMHc/zYGHPmR64odN
+  subdomain: sa-check
+  site_name: Welcome to Drupal
+
+###############################################################################
+# System related
+system:
+  release: stretch
+  ssl: letsencrypt
+  devel: false
+  debug: true
+
